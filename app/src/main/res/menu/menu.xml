@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/search_suraId"
+        android:title="Search"
+        app:showAsAction="always"
+        app:actionViewClass="android.widget.SearchView"
+        />
+    <item
+        app:showAsAction="always"
+        android:icon="@drawable/ic_share"
+        android:id="@+id/shareID"
+        android:title="Share App"
+        />
+
+    <item
+        android:id="@+id/privacyID"
+        android:title="Privacy Policy"
+        />
+    <item
+        android:id="@+id/rateUsID"
+        android:title="Rate Us"
+        />
+    <item
+        android:id="@+id/aboutUsID"
+        android:title="About Us"
+        />
+
+
+
+
+</menu>

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_marginBottom="5dp"
+    android:layout_margin="8dp"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:padding="10sp"
+        android:background="#fffdfaee"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/ayatNumberID"
+            android:layout_gravity="center"
+            android:background="@drawable/ayat2"
+            android:text="1"
+            android:textStyle="bold"
+            android:textSize="15sp"
+            android:textColor="@color/black"
+            android:gravity="center"
+            android:layout_width="65dp"
+            android:layout_height="55dp"/>
+
+        <TextView
+            android:id="@+id/arbiTXT_id"
+            android:text="arbi"
+            android:gravity="right"
+            android:textSize="20sp"
+            android:fontFamily="@font/quran_font"
+            android:textColor="@color/black"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+        <View
+            android:background="#00ACC1"
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"/>
+
+        <TextView
+            android:id="@+id/banla_meaningTXT_Id"
+            android:text="Bangla pronounciation"
+            android:layout_marginTop="5dp"
+            android:textSize="20sp"
+            android:fontFamily="@font/bdfont"
+            android:textColor="@color/black"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+        <View
+            android:background="#00ACC1"
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"/>
+        <TextView
+            android:id="@+id/english_meaningTXT_Id"
+            android:text="Bangla Meaning"
+            android:layout_marginTop="5dp"
+            android:textSize="20sp"
+            android:fontFamily="@font/bdfont"
+            android:textColor="@color/black"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+        <View
+            android:background="#00ACC1"
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"/>
+        <TextView
+            android:id="@+id/englishTxtID"
+            android:text="English Meaning "
+            android:textSize="20sp"
+            android:textColor="@color/black"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+        <View
+            android:background="#00ACC1"
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"/>
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:padding="16dp">
+
+    <TextView
+        android:gravity="center"
+        android:textColor="@color/black"
+        android:textSize="20dp"
+        android:text="Play Online or Download Audio File"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <Button
+        android:id="@+id/playArbi_id"
+        android:layout_marginTop="20dp"
+        android:text="Play Online Arbi"
+        android:layout_gravity="center"
+        android:textAllCaps="false"
+        android:layout_width="255dp"
+        android:textSize="12dp"
+        android:drawableRight="@drawable/ic_play_circle"
+        android:layout_height="wrap_content"/>
+
+    <Button
+        android:id="@+id/playArbiBangla_id"
+        android:layout_width="255dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:textSize="12dp"
+        android:drawableRight="@drawable/ic_play_circle"
+        android:text="Play Arbi With Bangla"
+        android:textAllCaps="false" />
+    <Button
+        android:id="@+id/downloadArbi_id"
+        android:layout_width="255dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:textSize="12dp"
+        android:text="Download Arbi"
+        android:drawableRight="@drawable/ic_download"
+        android:textAllCaps="false" />
+    <Button
+        android:id="@+id/downloadArbiBangla_id"
+        android:layout_width="255dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="Download Arbi With Bangla"
+        android:textSize="12dp"
+        android:drawableRight="@drawable/ic_download"
+        android:textAllCaps="false" />
+
+</LinearLayout>
