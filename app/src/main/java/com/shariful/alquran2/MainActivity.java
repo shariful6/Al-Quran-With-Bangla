@@ -21,8 +21,12 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.SearchView;
 import android.widget.Toast;
+
+import com.facebook.ads.AdSize;
+import com.facebook.ads.AdView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +40,9 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
     private RecyclerView recyclerView_suraList;
 
     AlertDialog alertDialog;
+
+    //Ads
+    private AdView adView;
 
 
     @Override
@@ -54,6 +61,12 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
 
          suraAdapter2 = new SuraAdapter(MainActivity.this,suraList);
          recyclerView_suraList.setAdapter(suraAdapter2);
+
+         //Facebook Ads section
+        adView = new AdView(this, LanguageName.FB_BANNER_ID, AdSize.BANNER_HEIGHT_50);
+        LinearLayout adContainer = findViewById(R.id.favourite_banner_container);
+        adContainer.addView(adView);
+        adView.loadAd();
          
     }
 
@@ -64,7 +77,7 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
         MenuItem searchViewItem =menu.findItem(R.id.search_suraId);
         final SearchView searchView = (SearchView) MenuItemCompat.getActionView(searchViewItem);
         searchView.setOnQueryTextListener(this);
-        searchView.setQueryHint("খুজুন");
+        searchView.setQueryHint("Search");
         return true;
     }
 
@@ -127,7 +140,6 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
         return super.onOptionsItemSelected(item);
     }
 
-
     //dialog
     void showDialog() {
         LayoutInflater inflater = LayoutInflater.from(this);
@@ -135,6 +147,8 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
         alertDialog = new AlertDialog.Builder(this).setView(view).create();
         alertDialog.show();
     }
+
+
 
 
 }

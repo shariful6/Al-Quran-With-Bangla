@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">Al Quran</string>
+
+    <style name="AppTheme.Splash" parent="@style/Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowFullscreen">true</item>
+    </style>
+
 </resources>

@@ -11,8 +11,10 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
+import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -26,6 +28,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -33,13 +36,19 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.webkit.MimeTypeMap;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.SearchView;
 import android.widget.SeekBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.facebook.ads.AdSize;
+import com.facebook.ads.AdView;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -47,14 +56,14 @@ import java.util.List;
 
 public class SecondActivity extends AppCompatActivity implements SearchView.OnQueryTextListener {
 
-    private static final int PERMISION_STORAGE_CODE = 1000;
     private static final int WRITE_PERMISION = 1001 ;
+    private static final int READ_PERMISION = 1002 ;
 
     String tag;
     String arbiAudioUrl;
     String banglaAudioUrl;
 
-    String suraName;
+    String suraNameArbi; //sura name arbi
     String suraNameBangla;
 
     private DatabaseAccess dbAccess;
@@ -70,27 +79,42 @@ public class SecondActivity extends AppCompatActivity implements SearchView.OnQu
     ImageView playBtn;
     Toolbar toolbar;
     Handler handler = new Handler();
+    //Audience Network
+    private AdView adView;
 
+    ProgressDialog progressDialog;
+    //for offline play
+    String songs[]; // to storage song names;
+    ArrayList<File> musics;
+   static MediaPlayer mMediaPlayer; // if not static then two or more than two songs will be played at the same time
+    File songNameFile;
+    Uri uri;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_second);
 
+        if (mMediaPlayer!=null) {
+            mMediaPlayer.stop();
+        }
+
+
          Intent intent = getIntent();
          tag =String.valueOf(intent.getIntExtra("tag",0));
          String bangla =intent.getStringExtra("bangla");
          String place =intent.getStringExtra("place");
          String ayat =intent.getStringExtra("ayat");
-         suraName =intent.getStringExtra("englishName");
+         suraNameArbi =intent.getStringExtra("englishName");
          suraNameBangla =intent.getStringExtra("banglaName");
-
          arbiAudioUrl =intent.getStringExtra("arbiUrl");
          banglaAudioUrl =intent.getStringExtra("banglaUrl");
 
+
         ActionBar supportActionBar = getSupportActionBar();
-        getSupportActionBar().setTitle("সূরা "+bangla);
-        supportActionBar.setSubtitle("মোট আয়াত "+place+", "+ayat+"য় অবতীর্ণ");
+        getSupportActionBar().setTitle(suraNameBangla);
+        supportActionBar.setSubtitle("মোট আয়াত: "+place+", "+ayat+"য় অবতীর্ন");
+
 
 
         recyclerView_detailsList = findViewById(R.id.recyclerView_detailsID);
@@ -110,9 +134,15 @@ public class SecondActivity extends AppCompatActivity implements SearchView.OnQu
         seekBar = findViewById(R.id.seekbar_id);
         playerLayout = findViewById(R.id.playerLayout_id);
         playBtn = findViewById(R.id.playBtnID);
+
         mediaPlayer = new MediaPlayer();
         seekBar.setMax(100);
 
+        //for Audeince Network
+        adView = new AdView(this, LanguageName.FB_BANNER_ID, AdSize.BANNER_HEIGHT_50);
+        LinearLayout adContainer = findViewById(R.id.favourite_banner_container2);
+        adContainer.addView(adView);
+        adView.loadAd();
 
         playBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -130,10 +160,10 @@ public class SecondActivity extends AppCompatActivity implements SearchView.OnQu
                     // this.toolbar.getMenu().findItem(R.id.playBtn_id).setIcon(R.drawable.ic_pause);
                     updateSeekbar();
                 }
+                play();
 
             }
         });
-
 
     }
     @Override
@@ -172,6 +202,7 @@ public class SecondActivity extends AppCompatActivity implements SearchView.OnQu
         int id =item.getItemId();
         if (id==R.id.playBtn_id){
             showDialog();
+
         }
         if (id==android.R.id.home) {
             finish();
@@ -180,9 +211,9 @@ public class SecondActivity extends AppCompatActivity implements SearchView.OnQu
 
     }
 
-
     //Audio Player Section
     private void prepareMediaPlayer(String url){
+
         try {
             mediaPlayer.setDataSource(url);
             mediaPlayer.prepare();
@@ -230,11 +261,17 @@ public class SecondActivity extends AppCompatActivity implements SearchView.OnQu
         }
 
     }
+
     public void onBackPressed() {
         try {
-            if (this.mediaPlayer != null && this.mediaPlayer.isPlaying()) {
+            if (this.mediaPlayer != null && this.mediaPlayer.isPlaying()||this.mMediaPlayer != null && this.mMediaPlayer.isPlaying()) {
                 this.mediaPlayer.stop();
+                this.mMediaPlayer.stop();
             }
+           // if (this.mMediaPlayer != null && this.mMediaPlayer.isPlaying()) {
+
+           // }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -265,11 +302,98 @@ public class SecondActivity extends AppCompatActivity implements SearchView.OnQu
         builder.setMessage("Please Turn On Internet !!\nPress ok to Exit");
         builder.setCancelable(false);
         builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-
             @Override
             public void onClick(DialogInterface dialog, int which) {
                  builder.setCancelable(true);
                // finish();
+            }
+        });
+
+        return builder;
+    }
+    public AlertDialog.Builder downloadDialog(Context c) {
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(c);
+       // builder.setTitle("No Internet Connection");
+        builder.setMessage("File Does Not Exist !!\nDo You Want To Download it Now ?");
+        builder.setCancelable(false);
+        builder.setPositiveButton("YES", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                builder.setCancelable(true);
+                if (isConnected(SecondActivity.this)){
+                    if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.M){
+                        if (ContextCompat.checkSelfPermission(SecondActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)== PackageManager.PERMISSION_GRANTED){
+                            String fileName = suraNameArbi+".mp3";
+                            download(fileName,arbiAudioUrl);
+                        }
+                        else {
+                            requestPermissions(new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE},WRITE_PERMISION );
+
+                        }
+                    }
+                    else
+                    {
+                        String fileName = suraNameArbi+".mp3";
+                        download(fileName,arbiAudioUrl);
+                    }
+
+                }
+                else{
+                    buildDialog(SecondActivity.this).show();
+                }
+
+               // alertDialog.dismiss();
+
+            }
+        });
+        builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+            }
+        });
+
+        return builder;
+    }
+    public AlertDialog.Builder downloadDialog2(Context c) {
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(c);
+        // builder.setTitle("No Internet Connection");
+        builder.setMessage("File Does Not Exist !!\nDo You Want To Download it Now ?");
+        builder.setCancelable(false);
+        builder.setPositiveButton("YES", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                builder.setCancelable(true);
+                if (isConnected(SecondActivity.this)){
+                    if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.M){
+                        if (ContextCompat.checkSelfPermission(SecondActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)== PackageManager.PERMISSION_GRANTED){
+                            String fileName = suraNameBangla+".mp3";
+                            download(fileName,banglaAudioUrl);
+                        }
+                        else {
+                            requestPermissions(new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE},WRITE_PERMISION );
+
+                        }
+                    }
+                    else
+                    {
+                        String fileName = suraNameBangla+".mp3";
+                        download(fileName,banglaAudioUrl);
+                    }
+
+                }
+                else{
+                    buildDialog(SecondActivity.this).show();
+                }
+                // alertDialog.dismiss();
+            }
+        });
+        builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
             }
         });
 
@@ -284,8 +408,8 @@ public class SecondActivity extends AppCompatActivity implements SearchView.OnQu
 
         Button playArbiBtn = view.findViewById(R.id.playArbi_id);
         Button playArbiBanglaBtn = view.findViewById(R.id.playArbiBangla_id);
-        Button downloadArbiBtn = view.findViewById(R.id.downloadArbi_id);
-        Button downloadArbiBanglaBtn = view.findViewById(R.id.downloadArbiBangla_id);
+        Button playArbiOfflineBtn = view.findViewById(R.id.arbiOfflineBtn_id);
+        Button playArbiWithBanglaOfflineBtn = view.findViewById(R.id.arbiWithBanglaOfflineBtn_id);
 
         AlertDialog alertDialog = new AlertDialog.Builder(this).setView(view).create();
         alertDialog.show();
@@ -293,8 +417,9 @@ public class SecondActivity extends AppCompatActivity implements SearchView.OnQu
         playArbiBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+
                //
-                mediaPlayer.stop();
+                mediaPlayer.reset();
 
                 if (isConnected(SecondActivity.this)){
                     prepareMediaPlayer(arbiAudioUrl);
@@ -323,11 +448,12 @@ public class SecondActivity extends AppCompatActivity implements SearchView.OnQu
             @Override
             public void onClick(View view) {
                //
-                mediaPlayer.stop();
+                mediaPlayer.reset();
                 if (isConnected(SecondActivity.this)){
 
                     prepareMediaPlayer(banglaAudioUrl);
                     playerLayout.setVisibility(View.VISIBLE);
+
                      if (mediaPlayer.isPlaying()){
                         handler.removeCallbacks(updater);
                         mediaPlayer.pause();
@@ -347,58 +473,56 @@ public class SecondActivity extends AppCompatActivity implements SearchView.OnQu
             }
         });
 
-        downloadArbiBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-                if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.M){
-                    if (ContextCompat.checkSelfPermission(SecondActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)== PackageManager.PERMISSION_GRANTED){
-                        String fileName = suraName+".mp3";
-                        download(fileName,arbiAudioUrl);
-                    }
-                    else {
-                        requestPermissions(new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE},WRITE_PERMISION );
-
-                    }
-                }
-                else
-                {
-                    String fileName = suraName+".mp3";
-                    download(fileName,arbiAudioUrl);
-                }
-
-                alertDialog.dismiss();
-            }
-        });
-
-
-        downloadArbiBanglaBtn.setOnClickListener(new View.OnClickListener() {
+        playArbiOfflineBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
                     if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.M){
-                        if (ContextCompat.checkSelfPermission(SecondActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)== PackageManager.PERMISSION_GRANTED){
-                            String fileName = suraNameBangla+".mp3";
-                            download(fileName,banglaAudioUrl);
+                        if (ContextCompat.checkSelfPermission(SecondActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE)== PackageManager.PERMISSION_GRANTED){
+                            initializeMusicPlayer(suraNameArbi);
                         }
+
                         else {
-                            requestPermissions(new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE},WRITE_PERMISION );
+                            requestPermissions(new String[] {Manifest.permission.READ_EXTERNAL_STORAGE},READ_PERMISION );
 
                         }
                     }
                     else
                     {
-                        String fileName = suraNameBangla+".mp3";
-                        download(fileName,banglaAudioUrl);
-                    }
+                    initializeMusicPlayer(suraNameArbi);
+
+                    } //else end
 
                 alertDialog.dismiss();
+
+            }
+        });
+
+        playArbiWithBanglaOfflineBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.M){
+                    if (ContextCompat.checkSelfPermission(SecondActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE)== PackageManager.PERMISSION_GRANTED){
+                      initializeMusicPlayer(suraNameBangla);
+                    }
+                    else {
+                        requestPermissions(new String[] {Manifest.permission.READ_EXTERNAL_STORAGE},READ_PERMISION );
+
+                    }
+                }
+                else
+                {
+                 initializeMusicPlayer(suraNameBangla);
+                } //else end
+
+                alertDialog.dismiss();
+
             }
         });
 
     }
-
-
+    
     // new file download system
     private void download(String fileName, String url) {
         Uri downloadUri= Uri.parse(url);
@@ -427,8 +551,6 @@ public class SecondActivity extends AppCompatActivity implements SearchView.OnQu
             Toast.makeText(this, ""+e.getMessage(), Toast.LENGTH_LONG).show();
         }
 
-
-
     } //start
 
     @Override
@@ -437,7 +559,7 @@ public class SecondActivity extends AppCompatActivity implements SearchView.OnQu
         if (requestCode==WRITE_PERMISION){
             if (grantResults.length>0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
                 //permision granted from popup, now perform download
-                String fileName = suraName+".mp3";
+                String fileName = suraNameArbi+".mp3";
                 download(fileName,arbiAudioUrl);
             }
             else{
@@ -453,6 +575,157 @@ public class SecondActivity extends AppCompatActivity implements SearchView.OnQu
 
         return  mimeTypeMap.getExtensionFromMimeType(resolver.getType(uri));
     }  //end
+
+
+    public  void  progressDialogOpen() {
+        progressDialog = new ProgressDialog(SecondActivity.this);
+        progressDialog.setCancelable(false);
+        progressDialog.show();
+        progressDialog.setContentView(R.layout.progress_dialog);
+        progressDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+
+    }
+
+    //for offline play code here
+    private ArrayList<File> findMusicFiles (File file) {
+        ArrayList<File> musicfileobject = new ArrayList<>();
+        File [] files = file.listFiles();
+
+        for (File currentFiles: files) {
+
+            if (currentFiles.isDirectory() && !currentFiles.isHidden()) {
+                musicfileobject.addAll(findMusicFiles(currentFiles));
+            } else {
+                if (currentFiles.getName().endsWith(".mp3") || currentFiles.getName().endsWith(".mp4a") || currentFiles.getName().endsWith(".wav")) {
+                    musicfileobject.add(currentFiles);
+                }
+            }
+        }
+
+        return musicfileobject;
+    }
+
+
+    private void initializeMusicPlayer(String suraName) {
+
+        if (mMediaPlayer!=null && mMediaPlayer.isPlaying()) {
+            mMediaPlayer.reset();
+        }
+
+        String fileName = suraName+".mp3";
+        musics = findMusicFiles(Environment.getExternalStorageDirectory());
+        songs = new String[musics.size()];
+        for (int i = 0; i <musics.size(); i++) {
+            if (musics.get(i).getName().equals(fileName)){
+                songNameFile = musics.get(i);
+                uri = Uri.parse(musics.get(i).toString());
+                break;
+            }
+        }
+        if (songNameFile !=null){
+            playerLayout.setVisibility(View.VISIBLE);
+            currentTimeTV.setVisibility(View.GONE);
+            totalTimeTV.setVisibility(View.GONE);
+            mMediaPlayer = MediaPlayer.create(SecondActivity.this, uri);
+            //mMediaPlayer.start();
+            mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                @Override
+                public void onPrepared(MediaPlayer mp) {
+                    // seekbar
+                    seekBar.setMax(mMediaPlayer.getDuration());
+                    // while mediaplayer is playing the play button should display pause
+                    playBtn.setImageResource(R.drawable.ic_pause_blue);
+                    // start the mediaplayer
+                    mMediaPlayer.start();
+                }
+
+            });
+            mMediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                @Override
+                public void onCompletion(MediaPlayer mp) {
+                    playBtn.setImageResource(R.drawable.ic_play_blue);
+                }
+            });
+
+        }
+        else{
+            downloadDialog(SecondActivity.this).show();
+        }
+
+        // working on seekbar
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+
+                // IF USER TOUCHES AND MESSES WITH SEEEKBAR
+                if (fromUser) {
+                    seekBar.setProgress(progress);
+                    mMediaPlayer.seekTo(progress);
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+
+        // till here seekbar wont change on its own
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while(mMediaPlayer!=null) {
+                    try {
+                        if (mMediaPlayer.isPlaying()) {
+                            Message message = new Message();
+                            message.what = mMediaPlayer.getCurrentPosition();
+                            handler2.sendMessage(message);
+                            Thread.sleep(1000);
+
+                        }
+
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }).start();
+
+    }
+
+
+
+    @SuppressLint("HandlerLeak")
+    private Handler handler2 = new Handler() {
+
+        @Override
+        public void handleMessage(Message msg) {
+            seekBar.setProgress(msg.what);
+        }
+    };
+
+    // lastly create a method for play
+
+    private void play() {
+        // if mediaplayer is not null and playing and if play button is pressed pause it
+
+        if (mMediaPlayer!=null && mMediaPlayer.isPlaying()) {
+            mMediaPlayer.pause();
+            // change the image of playpause button to play when we pause it
+            playBtn.setImageResource(R.drawable.ic_play_blue);
+        } else {
+            mMediaPlayer.start();
+            // if mediaplayer is playing // the image of play button should display pause
+            playBtn.setImageResource(R.drawable.ic_pause_blue);
+
+        }
+    }
 
 
 }
